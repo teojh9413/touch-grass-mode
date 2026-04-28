@@ -1,6 +1,7 @@
 (() => {
-  if (globalThis.__touchGrassModeContentLoaded) return;
-  globalThis.__touchGrassModeContentLoaded = true;
+  const CONTENT_SCRIPT_BUILD = "0.1.1-context-recovery";
+  if (globalThis.__touchGrassModeContentLoaded === CONTENT_SCRIPT_BUILD) return;
+  globalThis.__touchGrassModeContentLoaded = CONTENT_SCRIPT_BUILD;
 
   const OVERLAY_ID = "touch-grass-mode-overlay";
   const MAX_SCAN_TEXT_CHARS = 250000;
