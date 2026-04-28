@@ -1,7 +1,8 @@
 (() => {
-  const CONTENT_SCRIPT_BUILD = "0.1.1-context-recovery";
+  const CONTENT_SCRIPT_BUILD = "0.1.3-runtime-boundary-guards";
   if (globalThis.__touchGrassModeContentLoaded === CONTENT_SCRIPT_BUILD) return;
   globalThis.__touchGrassModeContentLoaded = CONTENT_SCRIPT_BUILD;
+  installStaleContextConsoleFilter();
 
   const OVERLAY_ID = "touch-grass-mode-overlay";
   const MAX_SCAN_TEXT_CHARS = 250000;
@@ -27,23 +28,38 @@
   init();
 
   async function init() {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      handleMessage(message).then(sendResponse).catch((error) => {
-        sendResponse({ ok: false, error: error?.message || String(error) });
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return;
+    }
+
+    try {
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        handleMessage(message).then(sendResponse).catch((error) => {
+          sendResponse({ ok: false, error: error?.message || String(error) });
+        });
+        return true;
       });
-      return true;
-    });
+    } catch (error) {
+      if (handleExtensionContextError(error)) return;
+      throw error;
+    }
 
     settings = await loadSettings();
     if (extensionContextInvalidated) return;
 
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "sync") return;
-      for (const key of Object.keys(changes)) {
-        settings[key] = changes[key].newValue;
-      }
-      syncScannerState("settings_changed");
-    });
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync") return;
+        for (const key of Object.keys(changes)) {
+          settings[key] = changes[key].newValue;
+        }
+        syncScannerState("settings_changed");
+      });
+    } catch (error) {
+      if (handleExtensionContextError(error)) return;
+      throw error;
+    }
 
     await rehydrateOverlayIfNeeded();
 
@@ -80,6 +96,11 @@
   }
 
   async function loadSettings() {
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return { ...DEFAULT_SETTINGS };
+    }
+
     try {
       const stored = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
       return { ...DEFAULT_SETTINGS, ...stored };
@@ -99,13 +120,15 @@
   function isExtensionContextInvalidated(error) {
     if (extensionContextInvalidated) return true;
     const message = error?.message || String(error || "");
-    let runtimeMissing = false;
+    return !hasLiveExtensionRuntime() || /extension context invalidated|context invalidated|receiving end does not exist|could not establish connection/i.test(message);
+  }
+
+  function hasLiveExtensionRuntime() {
     try {
-      runtimeMissing = typeof chrome === "undefined" || !chrome.runtime?.id;
+      return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
     } catch (_) {
-      runtimeMissing = true;
+      return false;
     }
-    return runtimeMissing || /extension context invalidated/i.test(message);
   }
 
   function shutdownInvalidatedContext() {
@@ -179,6 +202,11 @@
 
   function throttledCheck(reason) {
     if (extensionContextInvalidated) return;
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return;
+    }
+
     const now = Date.now();
     if (now - lastScanAt < THROTTLE_MS) return;
     lastScanAt = now;
@@ -333,6 +361,11 @@
   }
 
   async function activateCooldown({ loss, reason, snippet }) {
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return;
+    }
+
     const cooldownMinutes = Math.max(1, numberSetting("cooldownMinutes", DEFAULT_SETTINGS.cooldownMinutes));
     const now = Date.now();
     const state = {
@@ -356,6 +389,11 @@
   }
 
   async function getActiveCooldownForCurrentDomain() {
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return null;
+    }
+
     const data = await chrome.storage.local.get(cooldownKey());
     const state = data[cooldownKey()];
     if (!state) return null;
@@ -373,6 +411,11 @@
   }
 
   async function clearCooldownForCurrentDomain() {
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return;
+    }
+
     await chrome.storage.local.remove(cooldownKey());
   }
 
@@ -586,6 +629,11 @@
   }
 
   function runCountdownUpdate(update) {
+    if (!hasLiveExtensionRuntime()) {
+      shutdownInvalidatedContext();
+      return;
+    }
+
     update().catch((error) => {
       if (handleExtensionContextError(error)) return;
       console.warn("Touch Grass Mode: countdown update failed", error);
@@ -619,5 +667,19 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function installStaleContextConsoleFilter() {
+    if (globalThis.__touchGrassModeConsoleFilterInstalled) return;
+    globalThis.__touchGrassModeConsoleFilterInstalled = true;
+
+    const nativeWarn = console.warn.bind(console);
+    console.warn = (...args) => {
+      const text = args.map((arg) => arg?.message || String(arg || "")).join(" ");
+      if (/Touch Grass Mode: loss check failed/i.test(text) && /Extension context invalidated/i.test(text)) {
+        return;
+      }
+      nativeWarn(...args);
+    };
   }
 })();
