@@ -1,4 +1,7 @@
 (() => {
+  if (globalThis.__touchGrassModeContentLoaded) return;
+  globalThis.__touchGrassModeContentLoaded = true;
+
   const OVERLAY_ID = "touch-grass-mode-overlay";
   const MAX_SCAN_TEXT_CHARS = 250000;
   const SUPPORT_SNIPPET_RADIUS = 90;
@@ -23,6 +26,13 @@
   init();
 
   async function init() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      handleMessage(message).then(sendResponse).catch((error) => {
+        sendResponse({ ok: false, error: error?.message || String(error) });
+      });
+      return true;
+    });
+
     settings = await loadSettings();
     if (extensionContextInvalidated) return;
 
@@ -32,13 +42,6 @@
         settings[key] = changes[key].newValue;
       }
       syncScannerState("settings_changed");
-    });
-
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      handleMessage(message).then(sendResponse).catch((error) => {
-        sendResponse({ ok: false, error: error?.message || String(error) });
-      });
-      return true;
     });
 
     await rehydrateOverlayIfNeeded();

@@ -22,12 +22,43 @@ async function getActiveTab() {
 async function sendToActiveTab(message) {
   try {
     const tab = await getActiveTab();
-    const response = await chrome.tabs.sendMessage(tab.id, message);
+    const response = await sendMessageWithInjection(tab, message);
     if (response?.ok === false) throw new Error(response.error || "Unknown error");
     statusEl.textContent = formatResponse(response);
   } catch (error) {
-    statusEl.textContent = `Could not talk to this page.\n\n${error.message}\n\nTry refreshing the trading page after loading the extension.`;
+    statusEl.textContent = `Could not talk to this page.\n\n${error.message}\n\nRefresh the trading tab if it was open before the extension was installed or reloaded.`;
   }
+}
+
+async function sendMessageWithInjection(tab, message) {
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (error) {
+    if (!isMissingContentScriptError(error)) throw error;
+    await injectContentScript(tab);
+    return chrome.tabs.sendMessage(tab.id, message);
+  }
+}
+
+function isMissingContentScriptError(error) {
+  return /receiving end does not exist|could not establish connection/i.test(error?.message || String(error || ""));
+}
+
+async function injectContentScript(tab) {
+  const url = new URL(tab.url);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("This page type does not allow extension content scripts.");
+  }
+
+  await chrome.scripting.insertCSS({
+    target: { tabId: tab.id },
+    files: ["src/overlay.css"]
+  });
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ["src/content.js"]
+  });
 }
 
 async function enableCurrentSite() {
@@ -41,7 +72,7 @@ async function enableCurrentSite() {
       enabledDomains.push(host);
       await chrome.storage.sync.set({ enabledDomains });
     }
-    statusEl.textContent = `Enabled current site:\n${host}\n\nRefresh the page if support check does not respond.`;
+    statusEl.textContent = `Enabled current site:\n${host}\n\nNow run Check support.`;
   } catch (error) {
     statusEl.textContent = error.message;
   }

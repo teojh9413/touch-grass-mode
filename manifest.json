@@ -3,7 +3,7 @@
   "name": "Touch Grass Mode",
   "version": "0.1.0",
   "description": "A local-first anti-revenge-trading Chrome extension that blocks trading pages with grass after large losses.",
-  "permissions": ["storage", "activeTab", "tabs"],
+  "permissions": ["storage", "activeTab", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background.js"

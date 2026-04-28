@@ -115,6 +115,15 @@ function parseNumericValue(raw) {
 }
 
 const manifest = readJson("manifest.json");
+const requiredPermissions = ["storage", "activeTab", "tabs", "scripting"];
+
+for (const permission of requiredPermissions) {
+  if (!manifest.permissions?.includes(permission)) {
+    fail(`manifest permission ${permission}`);
+  } else {
+    pass(`manifest permission ${permission}`);
+  }
+}
 
 [
   manifest.background?.service_worker,
