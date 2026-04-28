@@ -17,67 +17,44 @@
   position: absolute !important;
   inset: 0 !important;
   background:
-    radial-gradient(circle at 50% 18%, rgba(173, 255, 125, 0.18), transparent 26%),
-    linear-gradient(180deg, rgba(18, 92, 56, 0.9), rgba(4, 32, 17, 0.96) 58%, rgba(0, 10, 3, 1)) !important;
+    radial-gradient(circle at 48% 18%, rgba(197, 255, 140, 0.2), transparent 22%),
+    radial-gradient(circle at 18% 34%, rgba(102, 187, 84, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(22, 86, 57, 0.94), rgba(6, 42, 23, 0.98) 48%, rgba(1, 14, 5, 1)) !important;
 }
 
-.tgm-grass {
-  position: absolute !important;
-  left: -10% !important;
-  right: -10% !important;
-  bottom: -12% !important;
-  height: 76% !important;
-  transform-origin: bottom center !important;
-  opacity: 0.94 !important;
-}
-
-.tgm-grass::before,
-.tgm-grass::after {
-  content: "" !important;
+#tgm-grass-canvas {
   position: absolute !important;
   inset: 0 !important;
-  background-repeat: repeat-x !important;
-  transform-origin: bottom center !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1 !important;
 }
 
-.tgm-grass-back::before {
-  background-image: repeating-linear-gradient(84deg, transparent 0 14px, rgba(70, 152, 66, 0.36) 14px 17px, transparent 17px 25px) !important;
-  animation: tgm-sway-a 3.9s ease-in-out infinite alternate !important;
+.tgm-ground-mist {
+  position: absolute !important;
+  inset: 42% 0 0 !important;
+  z-index: 1 !important;
+  background:
+    linear-gradient(180deg, rgba(198, 255, 170, 0.09), transparent 22%),
+    radial-gradient(ellipse at 50% 26%, rgba(209, 255, 187, 0.13), transparent 44%) !important;
+  mix-blend-mode: screen !important;
+  opacity: 0.8 !important;
+  pointer-events: none !important;
 }
 
-.tgm-grass-mid::before {
-  background-image: repeating-linear-gradient(92deg, transparent 0 9px, rgba(85, 191, 76, 0.58) 9px 12px, transparent 12px 20px) !important;
-  animation: tgm-sway-b 2.7s ease-in-out infinite alternate !important;
-}
-
-.tgm-grass-front::before {
-  background-image: repeating-linear-gradient(99deg, transparent 0 6px, rgba(136, 245, 94, 0.78) 6px 9px, transparent 9px 16px) !important;
-  animation: tgm-sway-c 2.1s ease-in-out infinite alternate !important;
-}
-
-.tgm-grass-front::after {
-  background-image: repeating-linear-gradient(76deg, transparent 0 11px, rgba(42, 118, 50, 0.68) 11px 14px, transparent 14px 22px) !important;
-  animation: tgm-sway-a 3.2s ease-in-out infinite alternate-reverse !important;
-}
-
-@keyframes tgm-sway-a {
-  from { transform: skewX(-2deg) translateX(-10px); }
-  to { transform: skewX(3deg) translateX(14px); }
-}
-
-@keyframes tgm-sway-b {
-  from { transform: skewX(2deg) translateX(8px); }
-  to { transform: skewX(-3deg) translateX(-12px); }
-}
-
-@keyframes tgm-sway-c {
-  from { transform: skewX(-4deg) translateX(-8px); }
-  to { transform: skewX(4deg) translateX(8px); }
+.tgm-vignette {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, transparent 46%, rgba(0, 8, 3, 0.58) 100%),
+    linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0, 7, 2, 0.58) 100%) !important;
+  pointer-events: none !important;
 }
 
 .tgm-card {
   position: relative !important;
-  z-index: 2 !important;
+  z-index: 3 !important;
   width: min(620px, calc(100vw - 32px)) !important;
   margin: 14vh auto 0 !important;
   padding: 34px !important;

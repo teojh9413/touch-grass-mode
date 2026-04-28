@@ -15,6 +15,8 @@
   let settings = { ...DEFAULT_SETTINGS };
   let lastScanAt = 0;
   let countdownTimer = null;
+  let grassAnimationFrame = null;
+  let grassResizeHandler = null;
   let observer = null;
 
   init();
@@ -158,7 +160,7 @@
 
     const active = await getActiveCooldownForCurrentDomain();
     if (active) {
-      renderOverlay(active);
+      if (!document.getElementById(OVERLAY_ID)) renderOverlay(active);
       return;
     }
 
@@ -353,9 +355,9 @@
 
     overlay.innerHTML = `
       <div class="tgm-sky"></div>
-      <div class="tgm-grass tgm-grass-back"></div>
-      <div class="tgm-grass tgm-grass-mid"></div>
-      <div class="tgm-grass tgm-grass-front"></div>
+      <canvas id="tgm-grass-canvas" aria-hidden="true"></canvas>
+      <div class="tgm-ground-mist"></div>
+      <div class="tgm-vignette"></div>
       <section class="tgm-card">
         <div class="tgm-kicker">Loss circuit breaker</div>
         <h1>Touch Grass Mode Activated</h1>
@@ -376,7 +378,152 @@
       removeOverlay();
     });
 
+    startGrassCanvas(overlay.querySelector("#tgm-grass-canvas"));
     startCountdown(state);
+  }
+
+  function startGrassCanvas(canvas) {
+    stopGrassCanvas();
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let blades = [];
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.max(1, Math.floor(rect.width));
+      height = Math.max(1, Math.floor(rect.height));
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      blades = createGrassBlades(width, height);
+    };
+
+    const draw = (timestamp) => {
+      ctx.clearRect(0, 0, width, height);
+      drawGrassField(ctx, blades, width, height, timestamp / 1000);
+      grassAnimationFrame = requestAnimationFrame(draw);
+    };
+
+    grassResizeHandler = resize;
+    window.addEventListener("resize", grassResizeHandler, { passive: true });
+    resize();
+    grassAnimationFrame = requestAnimationFrame(draw);
+  }
+
+  function stopGrassCanvas() {
+    if (grassAnimationFrame) cancelAnimationFrame(grassAnimationFrame);
+    grassAnimationFrame = null;
+
+    if (grassResizeHandler) {
+      window.removeEventListener("resize", grassResizeHandler);
+      grassResizeHandler = null;
+    }
+  }
+
+  function createGrassBlades(width, height) {
+    const random = seededRandom(Math.floor(width * 31 + height * 17));
+    const density = Math.min(1450, Math.max(520, Math.floor((width * height) / 1250)));
+    const blades = [];
+
+    for (let i = 0; i < density; i += 1) {
+      const depth = Math.pow(random(), 0.62);
+      const baseY = height * (0.5 + depth * 0.56);
+      const layer = depth < 0.36 ? 0 : depth < 0.72 ? 1 : 2;
+      const length = interpolate(28, 185, depth) * interpolate(0.82, 1.22, random());
+      const widthPx = interpolate(0.75, 3.4, depth) * interpolate(0.75, 1.25, random());
+      const hue = interpolate(78, 112, random()) - layer * 2;
+      const saturation = interpolate(42, 78, random());
+      const lightness = interpolate(15, 43, depth) + interpolate(-5, 7, random());
+
+      blades.push({
+        x: random() * width,
+        y: Math.min(height + length * 0.25, baseY + random() * height * 0.05),
+        length,
+        width: widthPx,
+        bend: interpolate(-0.32, 0.34, random()) * length,
+        phase: random() * Math.PI * 2,
+        speed: interpolate(0.75, 1.65, random()),
+        wind: interpolate(0.09, 0.34, random()) * interpolate(0.7, 1.3, depth),
+        color: `hsla(${hue}, ${saturation}%, ${lightness}%, ${interpolate(0.62, 0.96, depth)})`,
+        highlight: `hsla(${hue + 9}, ${Math.min(92, saturation + 12)}%, ${Math.min(68, lightness + 18)}%, ${interpolate(0.12, 0.34, depth)})`,
+        layer
+      });
+    }
+
+    return blades.sort((a, b) => a.layer - b.layer || a.y - b.y);
+  }
+
+  function drawGrassField(ctx, blades, width, height, time) {
+    const gust = Math.sin(time * 0.34) * 0.45 + Math.sin(time * 0.11) * 0.32;
+    const horizon = height * 0.5;
+
+    const ground = ctx.createLinearGradient(0, horizon, 0, height);
+    ground.addColorStop(0, "rgba(7, 42, 20, 0.04)");
+    ground.addColorStop(0.44, "rgba(8, 54, 20, 0.24)");
+    ground.addColorStop(1, "rgba(0, 12, 4, 0.84)");
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, horizon, width, height - horizon);
+
+    for (const blade of blades) {
+      const sway = (Math.sin(time * blade.speed + blade.phase) + gust) * blade.wind * blade.length;
+      const tipX = blade.x + blade.bend + sway;
+      const tipY = blade.y - blade.length;
+      const controlX = blade.x + blade.bend * 0.42 + sway * 0.72;
+      const controlY = blade.y - blade.length * 0.56;
+
+      ctx.beginPath();
+      ctx.moveTo(blade.x, blade.y);
+      ctx.quadraticCurveTo(controlX, controlY, tipX, tipY);
+      ctx.lineWidth = blade.width;
+      ctx.strokeStyle = blade.color;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      if (blade.layer === 2 && blade.width > 1.7) {
+        ctx.beginPath();
+        ctx.moveTo(blade.x + blade.width * 0.2, blade.y - blade.length * 0.12);
+        ctx.quadraticCurveTo(controlX + 1.5, controlY + blade.length * 0.08, tipX + 0.5, tipY + blade.length * 0.08);
+        ctx.lineWidth = Math.max(0.45, blade.width * 0.25);
+        ctx.strokeStyle = blade.highlight;
+        ctx.stroke();
+      }
+    }
+
+    drawDew(ctx, width, height, time);
+  }
+
+  function drawDew(ctx, width, height, time) {
+    const random = seededRandom(width * 13 + height * 29);
+    const count = Math.min(90, Math.floor(width / 12));
+    ctx.fillStyle = `rgba(224, 255, 206, ${0.18 + Math.sin(time * 1.2) * 0.04})`;
+
+    for (let i = 0; i < count; i += 1) {
+      const x = random() * width;
+      const y = height * interpolate(0.68, 0.95, random());
+      const radius = interpolate(0.55, 1.5, random());
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function interpolate(min, max, amount) {
+    return min + (max - min) * amount;
+  }
+
+  function seededRandom(seed) {
+    let value = seed || 1;
+    return () => {
+      value = (value * 1664525 + 1013904223) >>> 0;
+      return value / 4294967296;
+    };
   }
 
   function startCountdown(state) {
@@ -408,6 +555,7 @@
   function removeOverlay() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = null;
+    stopGrassCanvas();
     document.getElementById(OVERLAY_ID)?.remove();
   }
 
