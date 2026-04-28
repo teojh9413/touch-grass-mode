@@ -18,11 +18,13 @@
   let grassAnimationFrame = null;
   let grassResizeHandler = null;
   let observer = null;
+  let extensionContextInvalidated = false;
 
   init();
 
   async function init() {
     settings = await loadSettings();
+    if (extensionContextInvalidated) return;
 
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "sync") return;
@@ -78,9 +80,34 @@
       const stored = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
       return { ...DEFAULT_SETTINGS, ...stored };
     } catch (error) {
+      if (handleExtensionContextError(error)) return { ...DEFAULT_SETTINGS };
       console.warn("Touch Grass Mode: failed to load settings", error);
       return { ...DEFAULT_SETTINGS };
     }
+  }
+
+  function handleExtensionContextError(error) {
+    if (!isExtensionContextInvalidated(error)) return false;
+    shutdownInvalidatedContext();
+    return true;
+  }
+
+  function isExtensionContextInvalidated(error) {
+    if (extensionContextInvalidated) return true;
+    const message = error?.message || String(error || "");
+    let runtimeMissing = false;
+    try {
+      runtimeMissing = typeof chrome === "undefined" || !chrome.runtime?.id;
+    } catch (_) {
+      runtimeMissing = true;
+    }
+    return runtimeMissing || /extension context invalidated/i.test(message);
+  }
+
+  function shutdownInvalidatedContext() {
+    extensionContextInvalidated = true;
+    stopObserver();
+    removeOverlay();
   }
 
   function numberSetting(key, fallback) {
@@ -147,10 +174,12 @@
   }
 
   function throttledCheck(reason) {
+    if (extensionContextInvalidated) return;
     const now = Date.now();
     if (now - lastScanAt < THROTTLE_MS) return;
     lastScanAt = now;
     checkForLoss(reason).catch((error) => {
+      if (handleExtensionContextError(error)) return;
       console.warn("Touch Grass Mode: loss check failed", error);
     });
   }
@@ -548,8 +577,15 @@
       }
     };
 
-    update();
-    countdownTimer = setInterval(update, 1000);
+    runCountdownUpdate(update);
+    countdownTimer = setInterval(() => runCountdownUpdate(update), 1000);
+  }
+
+  function runCountdownUpdate(update) {
+    update().catch((error) => {
+      if (handleExtensionContextError(error)) return;
+      console.warn("Touch Grass Mode: countdown update failed", error);
+    });
   }
 
   function removeOverlay() {
