@@ -1,0 +1,17 @@
+body {
+  width: 360px;
+  margin: 0;
+  background: #06100a;
+  color: #efffe6;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main { padding: 16px; }
+.brand { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.logo { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: rgba(174,255,128,.13); border: 1px solid rgba(174,255,128,.18); }
+h1 { font-size: 17px; margin: 0; letter-spacing: -0.02em; }
+p { margin: 3px 0 0; color: rgba(239,255,230,.62); font-size: 12px; }
+.status { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 12px; color: rgba(239,255,230,.84); font-size: 12px; line-height: 1.45; white-space: pre-wrap; max-height: 260px; overflow: auto; }
+.buttons { display: grid; gap: 8px; margin-top: 12px; }
+button { border: 0; border-radius: 12px; padding: 10px 12px; font-weight: 700; cursor: pointer; background: #baff8c; color: #081008; }
+button.muted { background: rgba(255,255,255,.08); color: #efffe6; border: 1px solid rgba(255,255,255,.12); }
+button:hover { filter: brightness(1.05); }

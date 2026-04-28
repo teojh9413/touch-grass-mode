@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Touch Grass Mode Options</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div class="logo">TG</div>
+      <div>
+        <h1>Touch Grass Mode Options</h1>
+        <p>Configure your local anti-revenge-trading circuit breaker.</p>
+      </div>
+    </header>
+
+    <form id="optionsForm">
+      <label>
+        Loss threshold in USD
+        <input id="lossThresholdUsd" type="number" min="1" step="1" />
+        <small>Example: 500 means the overlay triggers at -$500 or worse.</small>
+      </label>
+
+      <label>
+        Cooldown duration in minutes
+        <input id="cooldownMinutes" type="number" min="1" step="1" />
+      </label>
+
+      <label>
+        Emergency unlock delay in seconds
+        <input id="emergencyUnlockDelaySeconds" type="number" min="0" step="1" />
+      </label>
+
+      <label>
+        Enabled domains, one per line
+        <textarea id="enabledDomains" rows="6" spellcheck="false"></textarea>
+        <small>Examples: app.hyperliquid.xyz, binance.com, *.bybit.com. The content script no-ops unless the current domain matches this list.</small>
+      </label>
+
+      <label>
+        PnL keywords, one per line
+        <textarea id="keywords" rows="8" spellcheck="false"></textarea>
+        <small>Add the exact labels your trading site uses, such as Realized PnL, Today's PnL, Account PnL.</small>
+      </label>
+
+      <button type="submit">Save settings</button>
+      <p id="saveStatus" class="save-status"></p>
+    </form>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
