@@ -92,23 +92,6 @@ Open the extension options page and set:
 | OKX | Not tested | TBD | Add domain and PnL keywords manually. |
 | Unknown sites | Experimental | Generic DOM text scan | Works only if PnL is visible as normal page text. |
 
-## Suggested overlay messages
-
-The overlay is the moment of intervention. Short, blunt, and not preachy works best. A few drop-in lines suitable for the extension or marketing copy:
-
-- "Touch grass. The market will still be here in 30 minutes."
-- "This is the trade that wipes the account. Walk away."
-- "You are tilted. Your PnL agrees. Cooldown active."
-- "Revenge trading is a tax on bad feelings. Pay it later. Or never."
-- "Close the laptop. Drink water. Come back when your hands are not shaking."
-- "The setup you are about to take did not exist five minutes ago."
-- "Your edge is not in the next click. Your edge is in the next hour of not clicking."
-- "Green grass beats red candles. Stay outside."
-- "If this trade is so good, it will still be good after the cooldown."
-- "Discipline is just the cooldown you set for yourself. This is that cooldown."
-
-These lines are intentionally low-stakes and non-financial. They are not advice. They exist to interrupt momentum.
-
 ## Privacy (technical)
 
 Touch Grass Mode does not collect, transmit, sell, or externally store trading data.
